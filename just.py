@@ -104,6 +104,7 @@ def write_body(cmd_args, config_params, task_id, task_name, task_body):
     # note 1: qsub fails on file names starting with a digit.
     # note 2: shorter names are better for qstat which displays the first 10 characters of the submitted script name
     path = "%s/s%d.%s.sh" % (cmd_args.workdir, task_id, task_name)
+    symbolic = path.rstrip('.sh')                                           # symlink for script with var names, keep path for short qstat
     with open(path, 'wb') as f:
         f.write(cmd_args.bashheader + '\n\n')                               # bash header
 
@@ -112,6 +113,7 @@ def write_body(cmd_args, config_params, task_id, task_name, task_body):
 
         if cmd_args.evaluate is not None:
             f.write(cmd_args.evaluate + "# JUST: user evaluate input\n")
+            symbolic = symbolic + "." + cmd_args.evaluate
         # write the parsed config
         f.write('## CONFIG ##\n')
         for vname in config_params:
@@ -122,6 +124,13 @@ def write_body(cmd_args, config_params, task_id, task_name, task_body):
             f.write('\n## BODY ##\n')
             for line in task_body:
                 f.write(line + '\n')
+        # create symlink with var names
+        if symbolic != path:
+            symbolic = symbolic.replace("=","")
+            symbolic = symbolic.replace(" ","")
+            symbolic = symbolic.replace(";","")
+            symlink ="\nln -s %s %s" % (path.lstrip(cmd_args.workdir), symbolic)
+            f.write(symlink)
     return path
 
 
